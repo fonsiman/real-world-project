@@ -60,6 +60,7 @@ Los archivos que contiene el proyecto son (por orden de ejecución):
 * `first-clean.py`: Limpieza del dataset inicial. Se limpian fundamentalmente las columnas `total_money_raised` y `offices`. Devuelve un archivo .json que se almacen en la carpeta dataset.
 * `dataset/companies_cleaned.json`: Archivo que devuelve `first-clean.py`. El archivo se importa a MongoDB como  y se le crea un geoindex.
 * `main.py`: Archivo principal que llama a todas las funciones para ejecutar el programa.
+* `queries.py`: Archivo con el argparse. Permite cambiar algunos datos de entrada, como el año, el número mínimo de empleados o el *total money raised*.
 * `extractors.py`: Extracción de los datos de trabajo. Toma como input el nuevo documento `companies_cleaned` de MongoDB. Las funciones que contienen son:
  * `connect()`: Para conectarse a la BBDD local de MongoDB.
  * `findcompanies()`: Realiza búsquedas geolocalizadas con el operador `$near` de MongoDB.
@@ -78,8 +79,43 @@ Tras limpiar los datos, exporté los archivos de `companies_cleaned` a csv para 
 
 Esto me permitía elegir los mejores lugares para ubicar la empresa. Sin embargo, a ojo era fácil equivocarse. Por ello busqué una forma de realizarlo de manera automática, otorgándole una puntuación a cada ubicación.
 
+Por ello decidí darle una puntuación a cada coordenada. Para ello he realizado una geoquery a MongoDB utilizando el operador $near y he contado en diferentes columnas algunas de los requisitos del ejercicio en un radio de 2000 m:
+
+* Empresas de videojuegos.
+* Las empresas fundadas después de 2009.
+* Empresas con más de 87 empleados.
+* Empresas que han sido financiados con más de $1M.
+* Empresas que han cerrado.
+
+Para poder sumar todos estos requisitos, he normalizado los valores que he obtenido utilizando el módulo de `sklearnp`. He sumado todos los valores normalizados (a excepción de las empresas que han cerrado, que cuentan en negativo) y los he ordenado de manera descendentes.
+
+Del resultado he escogido los mejores 5 lugares. En ellos he calculado algunos requisitos más del ejercicio a través de la API de Google Places. En concreto:
+
+* Aeropuertos
+* Starbucks
+* Discotecas
+* Guarderías
+* Restaurantes veganos
+* Canchas de baloncesto
+* Galerías de arte (como había tan pocas empresas de diseño en el dataset, he decidido añadir esto).
+
+El resultado lo he vuelto a normalizar, sumar y ordenar para obtener la mejor ubicación según los requisitos del ejercicio. 
+
+Para mostrar los resultados, he decidio crear una página HTML con los mapas Javascript incrustados que muestren las 5 mejores ubicaciones y el número de cada uno de los requisitos que cumplen.
+
+Como mostraba la imagen de Tableau, los resultados se suelen concentran en la zona de San Francisco y, en algunos casos, en Nueva York.
+
+La API de Google la he utilizado para tres cosas:
+
+* **Google Places**, en su función *nearby* para contar el nº de Starbucks, discotecas... cercanas.
+* **Google geocoding**. El ejercicio me devuelve unas coordenadas idóneas. La página HTML muestra el país, ciudad, barrio y calle que lo he "traducido" a través de esta función de la API.
+* **Mapas Javascript** para poder representar el resultado en un mapa.
+
 ## TO-DOs
 
-* Incluir un `argparse` para que los datos de la compañía puedan ser introducidor por el usuario.
+* Mejorar el `argparse`.
 * Dar una puntuación según varios radios de distancia para dar más importancia cuanto más cerca se encuentre.
 * Pasar el pipeline basado en funciones a uno basado en objetos.
+* Mejorar el diseño e interactividad de la web HTML. Se podrían señalar en el mapa empresas cercanas, Starbucks, aeropuertos...
+* Comentar más el código.
+* Mejorar el `total_money_raised`. Los datos se convierten utilizando una API y según el tipo de cambio actual. Se debería realizar según la fecha en el que obtuvieron la financiación.
